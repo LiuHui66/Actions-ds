@@ -1,0 +1,52 @@
+name: Build iOS IPA
+
+# 触发方式：
+# 1) 手动：仓库页面 Actions → Build iOS IPA → Run workflow
+# 2) 自动：push 到 main 分支
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 40
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 读取版本号
+        id: ver
+        run: |
+          if [ ! -f VERSION ]; then echo "缺少 VERSION 文件"; exit 1; fi
+          M=$(grep -E '^MARKETING_VERSION=' VERSION | head -n1 | cut -d= -f2 | tr -d '[:space:]')
+          B=$(grep -E '^BUILD_NUMBER=' VERSION | head -n1 | cut -d= -f2 | tr -d '[:space:]')
+          if [ -z "$M" ] || [ -z "$B" ]; then echo "VERSION 格式错误"; exit 1; fi
+          echo "marketing=$M" >> "$GITHUB_OUTPUT"
+          echo "build=$B" >> "$GITHUB_OUTPUT"
+          echo "本次构建版本：$M ($B)"
+
+      - name: 列出可用 Xcode 并选最新
+        run: |
+          ls /Applications | grep -i '^Xcode' || true
+          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n1)
+          if [ -n "$LATEST" ]; then sudo xcode-select -s "$LATEST"; fi
+          xcodebuild -version
+
+      - name: 安装 XcodeGen
+        run: brew install xcodegen
+
+      - name: 构建无签名 IPA
+        run: |
+          chmod +x scripts/build-unsigned-ipa.sh
+          ./scripts/build-unsigned-ipa.sh
+
+      - name: 上传 IPA 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: PFC-${{ steps.ver.outputs.marketing }}-${{ steps.ver.outputs.build }}
+          path: export/*.ipa
+          if-no-files-found: error
+          retention-days: 90

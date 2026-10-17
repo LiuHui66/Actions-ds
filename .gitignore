@@ -1,0 +1,18 @@
+# XcodeGen 生成的工程文件：由 project.yml 生成，不入库
+PFC.xcodeproj/
+PFC.xcworkspace/
+
+# 构建产物
+build/
+export/
+DerivedData/
+*.ipa
+*.dSYM.zip
+
+# macOS / Windows 垃圾文件
+.DS_Store
+Thumbs.db
+
+# Xcode 用户态文件
+xcuserdata/
+*.xcuserstate
