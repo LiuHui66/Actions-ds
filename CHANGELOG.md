@@ -33,3 +33,20 @@
   - `UpdateChecker` 去掉 `@MainActor` 标注，改用 `MainActor.run` 回主线程更新状态
   - 版本号比较改为逐位手写比较，不再依赖数组运算符重载
 - `project.yml` 显式设置 `SWIFT_STRICT_CONCURRENCY: minimal`，锁定并发检查等级
+
+## 1.0.3 (4)
+> 说明：1.0.2 (3) 从未推送成功、也没出过包，其改动（自动停表 + 编译修复）一并包含在本次 1.0.3 里。
+
+- 数字布局改为**不规则拼块**（不再是规整网格）：
+  - 新增 `PFC/Support/BoardLayout.swift`：在圆内撒点 → Lloyd 松弛 → 求 Voronoi 单元 → 圆形外框裁剪，
+    得到「面积接近、形状各不相同」的多边形拼块（类似蜂窝但不是网格）
+  - 新增 `PFC/Views/NumberBoard.swift`：按多边形绘制 + 描边，数字落在块的重心，
+    字号按每块的内切半径自适应；点击用 `SpatialTapGesture` + 射线法判定命中哪一块
+  - 删除 `PFC/Views/NumberGrid.swift`（旧网格）
+  - 相邻块深浅交替，边界更清楚；已找到的块变淡、点错闪红，行为与之前一致
+  - 每轮重新生成一套新拼块（含数字重新打乱），「重新开始」也会换形状
+- `Difficulty` 移除 `columns` / `rows`，副标题改为「N 个数字 · 不规则拼块」
+- `scripts/push-all.bat` 增强：
+  - 提交前打印 `git status --short`，一眼看出到底有没有改动
+  - 若「无可提交内容」会明确警告本次推送不会触发构建
+  - 推送后对比本地 HEAD 与远端 main，不一致直接报错并中止（不再静默成功）

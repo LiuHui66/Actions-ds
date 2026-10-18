@@ -26,21 +26,9 @@ enum Difficulty: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    /// 网格列数（行数自动推导）
-    var columns: Int {
-        switch self {
-        case .beginner: return 5
-        case .intermediate: return 5
-        case .advanced: return 6
-        }
-    }
-
-    var rows: Int {
-        Int(ceil(Double(numberCount) / Double(columns)))
-    }
-
+    /// 1.0.3 起改为不规则拼块布局，不再有「几行几列」
     var subtitle: String {
-        "\(numberCount) 个数字 · \(columns) × \(rows) 网格"
+        "\(numberCount) 个数字 · 不规则拼块"
     }
 
     var hint: String {

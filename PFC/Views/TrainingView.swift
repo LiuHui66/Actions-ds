@@ -1,15 +1,17 @@
 import SwiftUI
 
-/// 训练页：5 秒倒计时 → 开始计时 → 顺序点完全部数字 → 自动停止计时并结算
+/// 训练页：5 秒倒计时 → 开始计时 → 顺序点完不规则拼块上的数字 → 自动停止计时并结算
 ///
 /// 说明：最后一次点中后由 `finishAutomatically()` 立即冻结用时，
 /// 不需要用户再点「停止」按钮（1.0.2 起的行为）。
+/// 拼块布局由 `BoardLayout` 生成（Voronoi + Lloyd 松弛），不再是规整网格。
 struct TrainingView: View {
     let difficulty: Difficulty
 
     @Environment(\.dismiss) private var dismiss
 
-    @State private var numbers: [Int] = []
+    /// 当前这一轮的拼块（数字已随机分配进每块）
+    @State private var cells: [BoardCell] = []
     @State private var nextExpected = 1
     @State private var runID = UUID()
     @State private var phase: Phase = .countdown
@@ -31,7 +33,6 @@ struct TrainingView: View {
     private var total: Int { difficulty.numberCount }
     private var foundCount: Int { min(max(nextExpected - 1, 0), total) }
     private var remaining: Int { max(total - foundCount, 0) }
-    private var allFound: Bool { remaining == 0 }
 
     var body: some View {
         ZStack {
@@ -41,18 +42,17 @@ struct TrainingView: View {
                 topBar
                 statusPanel
 
-                NumberGrid(
-                    numbers: numbers,
-                    columns: difficulty.columns,
+                NumberBoard(
+                    cells: cells,
                     nextExpected: nextExpected,
                     tint: difficulty.tint,
                     flashingNumber: flashingNumber,
                     onTap: handleTap
                 )
                 .allowsHitTesting(phase == .running)
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                Spacer(minLength: 0)
                 footerStatus
                     .padding(.horizontal, 20)
             }
@@ -233,7 +233,7 @@ struct TrainingView: View {
         isFinishing = true
         Haptics.success()
 
-        // 留约 0.4 秒让最后一个格子的动画播完，再弹成绩面板
+        // 留约 0.4 秒让最后一个拼块的动画播完，再弹成绩面板
         Task {
             try? await Task.sleep(for: .milliseconds(420))
             // 期间用户可能点了「重新开始」或退出，用 runID 判断是否仍是同一轮
@@ -253,7 +253,7 @@ struct TrainingView: View {
     }
 
     private func restart() {
-        numbers = (1...total).shuffled()
+        rebuildBoard()
         nextExpected = 1
         mistakes = 0
         flashingNumber = nil
@@ -266,12 +266,17 @@ struct TrainingView: View {
         runID = UUID()
     }
 
+    /// 重新生成一套不规则拼块，并把数字重新打乱
+    private func rebuildBoard() {
+        cells = BoardLayout.make(count: total, seed: UInt64.random(in: 1...UInt64.max))
+    }
+
     // MARK: - 计时流程
 
     @MainActor
     private func runSession() async {
         // 重置本轮状态
-        numbers = (1...total).shuffled()
+        rebuildBoard()
         nextExpected = 1
         mistakes = 0
         flashingNumber = nil

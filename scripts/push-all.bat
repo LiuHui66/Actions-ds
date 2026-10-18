@@ -1,8 +1,8 @@
 @echo off
 REM ============================================================
 REM  One-click push: PFC Trainer -> GitHub (triggers CI to build IPA)
-REM  Usage in cmd        : scripts\push-all.bat "v1.0.2 note"
-REM  Usage in PowerShell : .\scripts\push-all.bat "v1.0.2 note"
+REM  Usage in cmd        : scripts\push-all.bat "v1.0.3 note"
+REM  Usage in PowerShell : .\scripts\push-all.bat "v1.0.3 note"
 REM  Repo: https://github.com/LiuHui66/Actions-ds
 REM  NOTE: ASCII-only on purpose, so codepage never breaks parsing.
 REM ============================================================
@@ -29,12 +29,18 @@ echo [3/6] checking git identity
 git config user.name >nul 2>&1 || git config --global user.name "LiuHui66"
 git config user.email >nul 2>&1 || git config --global user.email "liuhui66@users.noreply.github.com"
 
-echo [4/6] commit
+echo [4/6] staging and committing
 git add -A
+echo    --- changed files (empty list means nothing to push) ---
+git status --short
+echo    --------------------------------------------------------
 git commit -m "%MSG%"
 if errorlevel 1 (
-  echo    [i] NOTHING NEW TO COMMIT - no file change was detected.
-  echo    [i] If you DID change files, they were not saved where git looks.
+  echo.
+  echo [WARN] NOTHING NEW TO COMMIT - the working tree matches the last commit.
+  echo [WARN] If you expected changes, they were NOT saved to the files git reads.
+  echo [WARN] Push below will say "Everything up-to-date" and NO build will start.
+  echo.
 )
 
 echo [5/6] push to GitHub
@@ -55,11 +61,12 @@ for /f "delims=" %%i in ('git ls-remote origin refs/heads/main') do set "REMOTE_
 for /f "tokens=1" %%i in ("!REMOTE_LINE!") do set "REMOTE_SHA=%%i"
 echo    local  : !LOCAL_SHA!
 echo    remote : !REMOTE_SHA!
-if /i "!LOCAL_SHA!"=="!REMOTE_SHA!" (
-  echo    [OK] remote main == local HEAD, CI should start now
-) else (
-  echo    [WARN] remote main differs from local HEAD - the push did not land
+if /i not "!LOCAL_SHA!"=="!REMOTE_SHA!" (
+  echo    [ERR] remote main != local HEAD - the push did NOT land.
+  pause
+  exit /b 1
 )
+echo    [OK] remote main == local HEAD, CI should start now
 
 echo.
 echo === DONE ===
