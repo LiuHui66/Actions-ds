@@ -2,6 +2,8 @@ import SwiftUI
 
 /// 首页：选择难度
 struct HomeView: View {
+    @StateObject private var updateChecker = UpdateChecker()
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -29,8 +31,17 @@ struct HomeView: View {
             .navigationDestination(for: Difficulty.self) { difficulty in
                 TrainingView(difficulty: difficulty)
             }
+            // 回到首页时按「6 小时间隔」检查一次是否有新版本
+            .task { updateChecker.autoCheck() }
         }
         .tint(.mint)
+        .sheet(isPresented: $updateChecker.isPresentingUpdate) {
+            if case let .available(info) = updateChecker.status {
+                UpdateSheet(info: info) {
+                    updateChecker.dismiss()
+                }
+            }
+        }
     }
 
     private var header: some View {
@@ -53,11 +64,66 @@ struct HomeView: View {
                 .foregroundStyle(.secondary)
 
             // 手机上直接能看到装的是哪个包，方便按版本号区分
-            Text("版本 \(AppVersion.display)")
-                .font(.caption2)
-                .foregroundStyle(.secondary.opacity(0.6))
+            HStack(spacing: 10) {
+                Text("版本 \(AppVersion.display)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary.opacity(0.6))
+
+                Spacer(minLength: 0)
+
+                Button {
+                    updateChecker.checkManually()
+                } label: {
+                    HStack(spacing: 5) {
+                        if updateChecker.status == .checking {
+                            ProgressView()
+                                .controlSize(.mini)
+                                .tint(.mint)
+                        }
+                        Text(updateChecker.status == .checking ? "检查中…" : "检查更新")
+                            .font(.caption2)
+                    }
+                    .foregroundStyle(.mint.opacity(0.85))
+                }
+                .buttonStyle(.plain)
+                .disabled(updateChecker.status == .checking)
+            }
+
+            updateStatusLine
         }
         .padding(.top, 6)
+    }
+
+    @ViewBuilder
+    private var updateStatusLine: some View {
+        switch updateChecker.status {
+        case .upToDate:
+            Text("已是最新版本")
+                .font(.caption2)
+                .foregroundStyle(.mint.opacity(0.65))
+
+        case .failed:
+            Text("检查更新失败，请确认网络后重试")
+                .font(.caption2)
+                .foregroundStyle(.orange.opacity(0.85))
+
+        case let .available(info):
+            Button {
+                updateChecker.isPresentingUpdate = true
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.caption2)
+                    Text("有新版本 \(info.display)，点击查看")
+                        .font(.caption2)
+                }
+                .foregroundStyle(.mint)
+            }
+            .buttonStyle(.plain)
+
+        default:
+            EmptyView()
+        }
     }
 }
 

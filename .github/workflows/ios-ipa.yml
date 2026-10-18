@@ -8,6 +8,10 @@ on:
   push:
     branches: [main]
 
+# 发布 Release 需要写权限（用于给 App 内「检查更新」提供固定下载地址）
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-15
@@ -50,3 +54,20 @@ jobs:
           path: export/*.ipa
           if-no-files-found: error
           retention-days: 90
+
+      # App 内「检查更新」跳转的下载页，必须是固定地址（Artifacts 链接会过期且需要登录）
+      - name: 发布 Release（给 App 内更新提示提供固定下载地址）
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.marketing }}-${{ steps.ver.outputs.build }}
+          name: v${{ steps.ver.outputs.marketing }} (${{ steps.ver.outputs.build }})
+          body: |
+            版本：v${{ steps.ver.outputs.marketing }} (${{ steps.ver.outputs.build }})
+
+            下载 `PFC-${{ steps.ver.outputs.marketing }}-${{ steps.ver.outputs.build }}.ipa`，
+            用 Sideloadly 签名安装即可覆盖升级。
+
+            详细改动见仓库里的 CHANGELOG.md。
+          files: export/*.ipa
+          make_latest: true
