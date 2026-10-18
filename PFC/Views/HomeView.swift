@@ -57,41 +57,30 @@ struct HomeView: View {
         .padding(.bottom, 4)
     }
 
+    /// 首页只保留一个「检查更新」入口，不显示规则说明与版本号
     private var footer: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("规则：倒计时 5 秒结束后开始计时，按 1 → N 的顺序依次点选数字；全部找完后点击「停止」结束本轮。")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-
-            // 手机上直接能看到装的是哪个包，方便按版本号区分
-            HStack(spacing: 10) {
-                Text("版本 \(AppVersion.display)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary.opacity(0.6))
-
-                Spacer(minLength: 0)
-
-                Button {
-                    updateChecker.checkManually()
-                } label: {
-                    HStack(spacing: 5) {
-                        if updateChecker.status == .checking {
-                            ProgressView()
-                                .controlSize(.mini)
-                                .tint(.mint)
-                        }
-                        Text(updateChecker.status == .checking ? "检查中…" : "检查更新")
-                            .font(.caption2)
+        VStack(alignment: .trailing, spacing: 8) {
+            Button {
+                updateChecker.checkManually()
+            } label: {
+                HStack(spacing: 5) {
+                    if updateChecker.status == .checking {
+                        ProgressView()
+                            .controlSize(.mini)
+                            .tint(.mint)
                     }
-                    .foregroundStyle(.mint.opacity(0.85))
+                    Text(updateChecker.status == .checking ? "检查中…" : "检查更新")
+                        .font(.caption2)
                 }
-                .buttonStyle(.plain)
-                .disabled(updateChecker.status == .checking)
+                .foregroundStyle(.mint.opacity(0.85))
             }
+            .buttonStyle(.plain)
+            .disabled(updateChecker.status == .checking)
 
             updateStatusLine
         }
-        .padding(.top, 6)
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .padding(.top, 10)
     }
 
     @ViewBuilder
