@@ -21,3 +21,15 @@
   - 点「稍后提醒」后，同一版本不再自动弹出
 - 新增 `PFC/Support/AppConfig.swift`：仓库地址集中配置，换仓库只改这一个文件
 - GitHub Actions 增加自动发布 Release，给 App 内更新提示提供长期有效的固定下载地址
+
+## 1.0.2 (3)
+- 行为变更：**全部数字找齐后自动停止计时并弹出成绩**，不再需要用户点「停止」按钮
+  - 点中最后一个数字的瞬间即冻结用时（不含结算动画的 0.4 秒）
+  - 底部由按钮改为状态条，仅显示「还剩 N 个数字」/「全部找到 · 正在结算」
+  - 倒计时遮罩增加提示「全部找到后自动停止计时」
+- 修复 1.0.1 的编译错误（该版本在 CI 中编译失败，未产出 IPA）：
+  - `RemoteVersion` 解析改用 `components(separatedBy:)` + `String(...)`，
+    不再对 `Substring` 调用 `trimmingCharacters(in:)`
+  - `UpdateChecker` 去掉 `@MainActor` 标注，改用 `MainActor.run` 回主线程更新状态
+  - 版本号比较改为逐位手写比较，不再依赖数组运算符重载
+- `project.yml` 显式设置 `SWIFT_STRICT_CONCURRENCY: minimal`，锁定并发检查等级

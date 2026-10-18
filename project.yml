@@ -8,6 +8,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
+    # 锁定并发检查等级，避免不同 Xcode 版本默认值变化导致隔离相关的编译错误
+    SWIFT_STRICT_CONCURRENCY: minimal
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
 
 targets:
