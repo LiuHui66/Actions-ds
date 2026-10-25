@@ -20,14 +20,18 @@ struct EndlessResultView: View {
                         .foregroundStyle(.secondary)
 
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text("\(result.clearedCount)")
+                        Text("\(result.roundsCompleted)")
                             .font(.system(size: 56, weight: .bold, design: .rounded))
                             .monospacedDigit()
                             .foregroundStyle(.white)
-                        Text("个数字")
+                        Text("轮")
                             .font(.system(size: 17, weight: .medium, design: .rounded))
                             .foregroundStyle(.secondary)
                     }
+
+                    Text("共找出 \(result.clearedCount) 个数字")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
                 if result.isNewRecord {
@@ -41,7 +45,7 @@ struct EndlessResultView: View {
 
                 HStack(spacing: 10) {
                     statCard(title: "评级", value: result.grade.title, tint: result.grade.color)
-                    statCard(title: "完成轮次", value: "\(result.roundsCompleted)", tint: .purple)
+                    statCard(title: "总用时", value: String(format: "%.0f", result.elapsed), tint: .purple)
                     statCard(
                         title: "失误",
                         value: "\(result.mistakes)",
@@ -51,7 +55,7 @@ struct EndlessResultView: View {
                 .padding(.horizontal, 20)
 
                 VStack(spacing: 6) {
-                    Text("平均 \(String(format: "%.1f", result.secondsPerNumber)) 秒/个 · 板面最后到 \(result.boardTotal) 个")
+                    Text("平均 \(String(format: "%.1f", result.secondsPerNumber)) 秒/个 · 停在 \(result.boardTotal) 个的板面")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
@@ -103,7 +107,7 @@ struct EndlessResultView: View {
             .padding(.top, 28)
             .padding(.bottom, 24)
         }
-        .presentationDetents([.height(520)])
+        .presentationDetents([.height(540)])
         .presentationDragIndicator(.visible)
         .presentationBackground(Color(red: 0.04, green: 0.05, blue: 0.08))
     }
@@ -130,10 +134,11 @@ struct EndlessResultView: View {
 #Preview {
     EndlessResultView(
         result: EndlessResult(
-            clearedCount: 32,
-            roundsCompleted: 4,
+            clearedCount: 38,
+            roundsCompleted: 2,
             mistakes: 1,
-            boardTotal: 30,
+            boardTotal: 20,
+            elapsed: 168,
             isNewRecord: true
         ),
         onRetry: {},

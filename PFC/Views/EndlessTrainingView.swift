@@ -1,36 +1,45 @@
 import SwiftUI
 
-/// 无限模式：100 秒内不断找数字，完成一轮就 +5 个，时间归零自动结算
+/// 无限模式：每一轮都是独立的一关
 ///
-/// 规则细节：
-/// - 开局板面 10 个数字（1 → 10），5 秒倒计时后开始计时
-/// - 把当前板面上的数字全部按顺序点完 = 完成一轮 → 板面追加 5 个数字（10 → 15 → 20 …）
-///   已找过的数字仍然留在板上但变淡，接着找新出现的数字即可
-/// - 剩余时间归零 → 立即冻结成绩并弹出结算页（不需要手动停止）
+/// 规则：
+/// - 第 1 轮 10 个数字（1 → 10），限时 100 秒，开局有 5 秒倒计时
+/// - 清空这一轮 → 下一轮 15 个数字，**数字从 1 重新开始、板面全部重置、倒计时重置回 100 秒**
+/// - 依次 10 → 15 → 20 → 25 …，直到某一轮时间归零
+/// - 时间归零自动结算（不需要手动停止）
 struct EndlessTrainingView: View {
     @Environment(\.dismiss) private var dismiss
 
     /// 当前这一轮的拼块
     @State private var cells: [BoardCell] = []
-    /// 板面上数字总数（每完成一轮 +5）
+
+    /// 当前第几轮（从 1 开始）
+    @State private var round = 1
+    /// 当前这一轮的数字个数
     @State private var boardTotal = EndlessRules.initialCount
-    /// 下一个应该被点到的数字
+    /// 当前这一轮下一个该点的数字（每轮回到 1）
     @State private var nextExpected = 1
-    /// 一共找出了多少个数字
-    @State private var clearedCount = 0
-    /// 完整清空的轮数
+    /// 当前这一轮已经找出多少个
+    @State private var clearedInRound = 0
+    /// 跨轮累计找出多少个
+    @State private var clearedTotal = 0
+    /// 已完整清空的轮数
     @State private var roundsCompleted = 0
     @State private var mistakes = 0
     @State private var flashingNumber: Int?
 
     @State private var phase: Phase = .countdown
     @State private var countdownValue = EndlessRules.countdownSeconds
-    @State private var startedAt: Date?
-    /// 剩余时间（秒）
-    @State private var remaining = EndlessRules.totalDuration
 
-    /// 追加数字时的「+5」提示
-    @State private var batchFlash = false
+    /// 当前这一轮的开始时间（每轮重置）
+    @State private var roundStartedAt: Date?
+    /// 已结束各轮的累计用时
+    @State private var elapsedBefore: TimeInterval = 0
+    /// 当前这一轮剩余时间
+    @State private var roundRemaining = EndlessRules.roundDuration
+
+    /// 进入新一轮时的提示文字
+    @State private var roundFlash: String?
 
     @State private var result: EndlessResult?
     @State private var runID = UUID()
@@ -41,33 +50,18 @@ struct EndlessTrainingView: View {
         case stopped
     }
 
-    /// 本轮开始前已经找过多少个数字（第 1 轮为 0）
-    private var roundStart: Int {
-        roundsCompleted == 0 ? 0 : boardTotal - EndlessRules.increment
-    }
-
-    /// 本轮已经找出多少个（第 1 轮 0…10，之后 0…5）
-    private var clearedThisRound: Int {
-        max(clearedCount - roundStart, 0)
-    }
-
-    /// 本轮需要找的个数
-    private var roundSize: Int {
-        max(boardTotal - roundStart, 1)
+    /// 本局到目前为止的总用时（含正在进行的这一轮）
+    private var elapsedTotal: TimeInterval {
+        elapsedBefore + max(EndlessRules.roundDuration - roundRemaining, 0)
     }
 
     /// 板面上还没找到的个数
     private var remainingOnBoard: Int {
-        max(boardTotal - clearedCount, 0)
-    }
-
-    private var timeLeft: TimeInterval {
-        guard let startedAt else { return EndlessRules.totalDuration }
-        return max(EndlessRules.totalDuration - Date.now.timeIntervalSince(startedAt), 0)
+        max(boardTotal - clearedInRound, 0)
     }
 
     private var formattedRemaining: String {
-        String(format: "%.1f", max(remaining, 0))
+        String(format: "%.1f", max(roundRemaining, 0))
     }
 
     var body: some View {
@@ -88,7 +82,7 @@ struct EndlessTrainingView: View {
                 .allowsHitTesting(phase == .running)
                 .padding(.horizontal, 12)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .overlay(alignment: .top) { batchFlashView }
+                .overlay(alignment: .top) { roundFlashView }
 
                 footerStatus
                     .padding(.horizontal, 20)
@@ -142,22 +136,30 @@ struct EndlessTrainingView: View {
 
     private var statusPanel: some View {
         VStack(spacing: 12) {
+            Text("第 \(round) 轮 · \(boardTotal) 个数字")
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(Color.purple)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
+                .background(Capsule().fill(Color.purple.opacity(0.16)))
+                .animation(.snappy, value: round)
+
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(formattedRemaining)
                     .font(.system(size: 52, weight: .bold, design: .rounded))
                     .monospacedDigit()
-                    .foregroundStyle(remaining <= 20 ? Color.orange : Color.white)
+                    .foregroundStyle(roundRemaining <= 20 ? Color.orange : Color.white)
                 Text("秒")
                     .font(.system(size: 17, weight: .medium, design: .rounded))
                     .foregroundStyle(.secondary)
             }
 
             VStack(spacing: 6) {
-                ProgressView(value: Double(clearedThisRound), total: Double(roundSize))
+                ProgressView(value: Double(clearedInRound), total: Double(max(boardTotal, 1)))
                     .tint(.purple)
 
                 HStack {
-                    Text("本轮 \(clearedThisRound)/\(roundSize)")
+                    Text("本轮 \(clearedInRound)/\(boardTotal)")
                     Spacer()
                     Text(mistakes > 0 ? "失误 \(mistakes)" : "零失误")
                         .foregroundStyle(mistakes > 0 ? Color.orange : Color.secondary)
@@ -166,9 +168,9 @@ struct EndlessTrainingView: View {
                 .foregroundStyle(.secondary)
 
                 HStack {
-                    Text("累计 \(clearedCount) 个")
+                    Text("累计 \(clearedTotal) 个")
                     Spacer()
-                    Text("完成 \(roundsCompleted) 轮")
+                    Text("已清空 \(roundsCompleted) 轮")
                 }
                 .font(.caption2)
                 .foregroundStyle(.secondary.opacity(0.85))
@@ -177,7 +179,7 @@ struct EndlessTrainingView: View {
         }
     }
 
-    /// 底部状态条（只展示）：板面上还剩几个数字
+    /// 底部状态条（只展示）
     private var footerStatus: some View {
         HStack(spacing: 8) {
             Image(systemName: phase == .running ? "hourglass" : "clock.badge.exclamationmark")
@@ -195,15 +197,16 @@ struct EndlessTrainingView: View {
         .animation(.snappy, value: phase)
     }
 
-    private var batchFlashView: some View {
+    private var roundFlashView: some View {
         Group {
-            if batchFlash {
-                Text("+\(EndlessRules.increment)")
-                    .font(.system(size: 30, weight: .heavy, design: .rounded))
+            if let roundFlash {
+                Text(roundFlash)
+                    .font(.system(size: 24, weight: .heavy, design: .rounded))
                     .foregroundStyle(.purple)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 8)
                     .background(Capsule().fill(Color.purple.opacity(0.16)))
+                    .overlay(Capsule().strokeBorder(Color.purple.opacity(0.35), lineWidth: 1))
                     .transition(.scale.combined(with: .opacity))
             }
         }
@@ -227,11 +230,11 @@ struct EndlessTrainingView: View {
                     .foregroundStyle(.purple)
                     .contentTransition(.numericText(countsDown: true))
 
-                Text("\(Int(EndlessRules.totalDuration)) 秒内找出尽可能多的数字")
+                Text("第 1 轮 \(EndlessRules.initialCount) 个数字 · 限时 \(Int(EndlessRules.roundDuration)) 秒")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
 
-                Text("每清空一轮自动 +\(EndlessRules.increment) 个数字")
+                Text("清空一轮就 +\(EndlessRules.increment) 个，数字与时间全部重置")
                     .font(.caption2)
                     .foregroundStyle(.secondary.opacity(0.8))
             }
@@ -245,18 +248,19 @@ struct EndlessTrainingView: View {
         guard phase == .running else { return }
 
         // 时间刚好走完的瞬间：直接结算，不再处理这次点击
-        if timeLeft <= 0 {
+        if roundRemaining <= 0 {
             finish()
             return
         }
 
         if number == nextExpected {
-            clearedCount += 1
+            clearedInRound += 1
+            clearedTotal += 1
             nextExpected += 1
             Haptics.light()
 
-            if clearedCount >= boardTotal {
-                addNextBatch()
+            if clearedInRound >= boardTotal {
+                finishRound()
             }
         } else if number > nextExpected {
             mistakes += 1
@@ -276,27 +280,39 @@ struct EndlessTrainingView: View {
         // number < nextExpected：已经找过，忽略
     }
 
-    /// 清空一轮 → 板面追加 5 个数字，并重新生成一套拼块
-    private func addNextBatch() {
+    /// 清空这一轮 → 进入下一轮：数字从 1 重置、板面重画、倒计时重置
+    private func finishRound() {
         guard phase == .running else { return }
 
+        // 记下这一轮实际花了多久
+        if let roundStartedAt {
+            elapsedBefore += Date.now.timeIntervalSince(roundStartedAt)
+        }
         roundsCompleted += 1
-        let newTotal = boardTotal + EndlessRules.increment
+        round += 1
+
+        let newTotal = EndlessRules.roundSize(round)
         Haptics.success()
 
         withAnimation(.snappy(duration: 0.28)) {
             boardTotal = newTotal
+            nextExpected = 1          // 数字从 1 重新开始
+            clearedInRound = 0        // 本轮进度清零
+            roundRemaining = EndlessRules.roundDuration   // 时间重置
             cells = BoardLayout.make(count: newTotal, seed: UInt64.random(in: 1...UInt64.max))
         }
 
-        showBatchFlash()
+        // 新一轮从此刻重新计时
+        roundStartedAt = Date.now
+
+        showRoundFlash("第 \(round) 轮 · \(newTotal) 个")
     }
 
-    private func showBatchFlash() {
-        withAnimation(.snappy) { batchFlash = true }
+    private func showRoundFlash(_ text: String) {
+        withAnimation(.snappy) { roundFlash = text }
         Task {
-            try? await Task.sleep(for: .milliseconds(900))
-            withAnimation(.easeOut(duration: 0.3)) { batchFlash = false }
+            try? await Task.sleep(for: .milliseconds(1000))
+            withAnimation(.easeOut(duration: 0.3)) { roundFlash = nil }
         }
     }
 
@@ -304,14 +320,15 @@ struct EndlessTrainingView: View {
     private func finish() {
         guard phase == .running else { return }
 
-        let finalCleared = clearedCount
+        let finalCleared = clearedTotal
         let finalRounds = roundsCompleted
         let finalMistakes = mistakes
         let finalBoard = boardTotal
+        let finalElapsed = elapsedTotal
         let capturedRunID = runID
 
         phase = .stopped
-        remaining = 0
+        roundRemaining = 0
         Haptics.medium()
 
         Task {
@@ -325,6 +342,7 @@ struct EndlessTrainingView: View {
                 roundsCompleted: finalRounds,
                 mistakes: finalMistakes,
                 boardTotal: finalBoard,
+                elapsed: finalElapsed,
                 isNewRecord: isNewRecord
             )
         }
@@ -342,15 +360,18 @@ struct EndlessTrainingView: View {
     @MainActor
     private func runSession() async {
         // 重置本局状态
+        round = 1
         boardTotal = EndlessRules.initialCount
         nextExpected = 1
-        clearedCount = 0
+        clearedInRound = 0
+        clearedTotal = 0
         roundsCompleted = 0
         mistakes = 0
         flashingNumber = nil
-        batchFlash = false
-        remaining = EndlessRules.totalDuration
-        startedAt = nil
+        roundFlash = nil
+        roundRemaining = EndlessRules.roundDuration
+        elapsedBefore = 0
+        roundStartedAt = nil
         result = nil
         countdownValue = EndlessRules.countdownSeconds
         phase = .countdown
@@ -365,17 +386,18 @@ struct EndlessTrainingView: View {
 
         if Task.isCancelled { return }
 
-        startedAt = Date.now
-        remaining = EndlessRules.totalDuration
+        roundStartedAt = Date.now
+        roundRemaining = EndlessRules.roundDuration
         Haptics.medium()
         withAnimation(.easeOut(duration: 0.2)) { phase = .running }
 
         // 倒计时刷新（约 20fps）；时间归零后 phase 变为 .stopped，循环自动结束
+        // 每清空一轮 roundStartedAt 会被重置，倒计时自然回到 100 秒
         while !Task.isCancelled, phase == .running {
-            if let startedAt {
-                remaining = max(EndlessRules.totalDuration - Date.now.timeIntervalSince(startedAt), 0)
+            if let roundStartedAt {
+                roundRemaining = max(EndlessRules.roundDuration - Date.now.timeIntervalSince(roundStartedAt), 0)
             }
-            if remaining <= 0 {
+            if roundRemaining <= 0 {
                 finish()
                 break
             }
