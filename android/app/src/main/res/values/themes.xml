@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 深色主题：背景与 iOS 版一致（#0A0D14） -->
+    <style name="Theme.PFC" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/pfc_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

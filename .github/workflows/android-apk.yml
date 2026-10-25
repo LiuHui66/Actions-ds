@@ -1,0 +1,81 @@
+name: Build Android APK
+
+# 触发方式：
+# 1) 手动：仓库页面 Actions → Build Android APK → Run workflow
+# 2) 自动：push 到 main 分支
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 安装 Android SDK 工具
+        uses: android-actions/setup-android@v3
+
+      - name: 准备 Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: 读取版本号（与 iOS 共用根目录 VERSION）
+        id: ver
+        run: |
+          if [ ! -f VERSION ]; then echo "缺少 VERSION 文件"; exit 1; fi
+          M=$(grep -E '^MARKETING_VERSION=' VERSION | head -n1 | cut -d= -f2 | tr -d '[:space:]')
+          B=$(grep -E '^BUILD_NUMBER=' VERSION | head -n1 | cut -d= -f2 | tr -d '[:space:]')
+          echo "marketing=$M" >> "$GITHUB_OUTPUT"
+          echo "build=$B" >> "$GITHUB_OUTPUT"
+          echo "本次构建版本：$M ($B)"
+
+      - name: 编译 debug APK
+        working-directory: android
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: 重命名产物
+        run: |
+          cd android/app/build/outputs/apk/debug
+          ls -l
+          cp app-debug.apk "PFC-android-${{ steps.ver.outputs.marketing }}-${{ steps.ver.outputs.build }}.apk"
+
+      - name: 上传 APK 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: PFC-android-${{ steps.ver.outputs.marketing }}-${{ steps.ver.outputs.build }}
+          path: android/app/build/outputs/apk/debug/PFC-android-*.apk
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: 发布 Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-v${{ steps.ver.outputs.marketing }}-${{ steps.ver.outputs.build }}
+          name: Android v${{ steps.ver.outputs.marketing }} (${{ steps.ver.outputs.build }})
+          body: |
+            Android 版本：v${{ steps.ver.outputs.marketing }} (${{ steps.ver.outputs.build }})
+
+            下载 `PFC-android-${{ steps.ver.outputs.marketing }}-${{ steps.ver.outputs.build }}.apk`，
+            传到手机上直接点击安装（需在系统里允许「安装未知来源应用」）。
+
+            debug 签名，自用足够，没有 7 天过期问题。
+
+            详细改动见仓库里的 CHANGELOG.md。
+          files: android/app/build/outputs/apk/debug/PFC-android-*.apk
+          make_latest: false

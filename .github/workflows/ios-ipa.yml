@@ -8,7 +8,7 @@ on:
   push:
     branches: [main]
 
-# 发布 Release 需要写权限（用于给 App 内「检查更新」提供固定下载地址）
+# 发布 Release 需要写权限（Release 里挂 IPA，方便手机/电脑下载，比 Artifacts 链接稳定）
 permissions:
   contents: write
 
@@ -55,8 +55,9 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      # App 内「检查更新」跳转的下载页，必须是固定地址（Artifacts 链接会过期且需要登录）
-      - name: 发布 Release（给 App 内更新提示提供固定下载地址）
+      # 把 IPA 挂到 Release 上，得到一个固定、免登录的下载地址
+      # （Artifacts 链接需要登录且 90 天后过期；App 内已不再做「检查更新」）
+      - name: 发布 Release
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
@@ -66,7 +67,7 @@ jobs:
             版本：v${{ steps.ver.outputs.marketing }} (${{ steps.ver.outputs.build }})
 
             下载 `PFC-${{ steps.ver.outputs.marketing }}-${{ steps.ver.outputs.build }}.ipa`，
-            用 Sideloadly 签名安装即可覆盖升级。
+            用 Sideloadly 签名安装即可覆盖升级（同 Bundle ID，不丢成绩）。
 
             详细改动见仓库里的 CHANGELOG.md。
           files: export/*.ipa

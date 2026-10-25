@@ -2,16 +2,29 @@
 PFC.xcodeproj/
 PFC.xcworkspace/
 
-# 构建产物
+# iOS 构建产物
 build/
 export/
 DerivedData/
 *.ipa
 *.dSYM.zip
 
-# macOS / Windows 垃圾文件
+# Android / Gradle
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/captures/
+*.apk
+*.aab
+*.iml
+
+# 编辑器与系统垃圾文件
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/
 
 # Xcode 用户态文件
 xcuserdata/

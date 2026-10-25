@@ -80,3 +80,24 @@
 - 评级改为按**清空轮数**换算：S ≥ 4 轮、A ≥ 3 轮、B ≥ 2 轮、C ≥ 1 轮、其它 D
 - `EndlessRules`：`totalDuration` → `roundDuration`（每轮时限），新增 `roundSize(_ round:)`
 - `EndlessResult`：新增 `elapsed`（本局实际总用时），`secondsPerNumber` 改用它计算
+
+## 1.1.0 (8)
+- **删除「检查更新 / 下载新版本」功能**（iOS 侧整块移除，Android 侧从一开始就不做）
+  - 删除 `PFC/Support/UpdateChecker.swift`、`PFC/Support/AppConfig.swift`、
+    `PFC/Support/AppVersion.swift`、`PFC/Views/UpdateSheet.swift`
+  - `HomeView.swift` 首页底部不再有「检查更新」按钮与任何状态提示，只剩四张模式卡片
+  - 删除原因：跳转外部地址下载安装包属于绕过商店分发，上架审核不允许；
+    且侧载场景下 App 无法自我替换，提示了也要回电脑用 Sideloadly 重装，实际价值有限
+  - iOS 流水线保留自动发布 Release（只是为了方便下载 IPA，App 内已不再读取）
+- **新增安卓版**（`android/`，Kotlin + Jetpack Compose，与 iOS 逻辑一一对应）
+  - 功能完全一致：初级 10 / 中级 20 / 高级 30、5 秒倒计时、不规则拼块、
+    按 1→N 顺序点选、点错闪红 + 震动 + 失误计数、全部找到自动停表、成绩评级、最佳成绩
+  - 无限模式同样「每轮独立一关」：第 1 轮 10 个限时 100 秒，清空后 15 / 20 / 25 …，
+    数字与计时全部重置，时间归零自动结算
+  - `BoardLayout.kt` 与 iOS 的 `BoardLayout.swift` 是同一套算法（撒点 → Lloyd 松弛 →
+    Voronoi → 圆形裁剪），只是换成 Kotlin 实现；命中判定同样用射线法
+  - 版本号读取仓库根目录的 `VERSION`（`versionName` / `versionCode`），与 iOS 单一来源
+  - **Manifest 里没有 INTERNET 权限**，纯本地运行、不联网
+  - 新增 `.github/workflows/android-apk.yml`：push 后自动编译 debug APK 并发布到 Release
+    （安卓 debug 包可直接安装，无 7 天有效期问题）
+- `VERSION` → 1.1.0 / 8；`.gitignore` 增加 Android / Gradle 产物

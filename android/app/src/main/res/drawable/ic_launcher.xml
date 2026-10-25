@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 简单矢量图标：深色底 + 不规则拼块 + 中间的数字感竖条 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#0A0D14"
+        android:pathData="M0,0h108v108H0z" />
+
+    <!-- 左上一块 -->
+    <path
+        android:fillColor="#12352C"
+        android:strokeColor="#3DDC97"
+        android:strokeWidth="1.5"
+        android:pathData="M24,26 L48,22 L54,44 L40,58 L22,48 Z" />
+
+    <!-- 右上一块 -->
+    <path
+        android:fillColor="#0F2E36"
+        android:strokeColor="#35D6E8"
+        android:strokeWidth="1.5"
+        android:pathData="M56,22 L84,26 L86,50 L62,52 L54,40 Z" />
+
+    <!-- 下面一块 -->
+    <path
+        android:fillColor="#33261A"
+        android:strokeColor="#FF9F45"
+        android:strokeWidth="1.5"
+        android:pathData="M30,62 L58,56 L82,64 L78,86 L42,88 L26,76 Z" />
+
+    <!-- 中间的高亮数字块 -->
+    <path
+        android:fillColor="#3DDC97"
+        android:pathData="M50,44 h8 v20 h-8 z" />
+</vector>

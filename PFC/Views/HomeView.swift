@@ -7,9 +7,12 @@ enum HomeRoute: Hashable {
 }
 
 /// 首页：选择模式
+///
+/// 1.1.0 起移除了「检查更新 / 下载新版本」入口与整个更新提示模块。
+/// 原因：跳转外部地址下载安装包属于绕过商店分发，上架审核不允许；
+/// 且侧载场景下 App 无法自我替换，提示了也要回电脑重装，实际价值有限。
+/// 现在首页只有四张模式卡片（三个难度 + 无限模式）。
 struct HomeView: View {
-    @StateObject private var updateChecker = UpdateChecker()
-
     var body: some View {
         NavigationStack {
             ZStack {
@@ -30,8 +33,6 @@ struct HomeView: View {
                             EndlessCard()
                         }
                         .buttonStyle(.plain)
-
-                        footer
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
@@ -47,17 +48,8 @@ struct HomeView: View {
                     EndlessTrainingView()
                 }
             }
-            // 回到首页时按「6 小时间隔」检查一次是否有新版本
-            .task { updateChecker.autoCheck() }
         }
         .tint(.mint)
-        .sheet(isPresented: $updateChecker.isPresentingUpdate) {
-            if case let .available(info) = updateChecker.status {
-                UpdateSheet(info: info) {
-                    updateChecker.dismiss()
-                }
-            }
-        }
     }
 
     private var header: some View {
@@ -71,64 +63,6 @@ struct HomeView: View {
                 .foregroundStyle(.secondary)
         }
         .padding(.bottom, 4)
-    }
-
-    /// 首页只保留一个「检查更新」入口，不显示规则说明与版本号
-    private var footer: some View {
-        VStack(alignment: .trailing, spacing: 8) {
-            Button {
-                updateChecker.checkManually()
-            } label: {
-                HStack(spacing: 5) {
-                    if updateChecker.status == .checking {
-                        ProgressView()
-                            .controlSize(.mini)
-                            .tint(.mint)
-                    }
-                    Text(updateChecker.status == .checking ? "检查中…" : "检查更新")
-                        .font(.caption2)
-                }
-                .foregroundStyle(.mint.opacity(0.85))
-            }
-            .buttonStyle(.plain)
-            .disabled(updateChecker.status == .checking)
-
-            updateStatusLine
-        }
-        .frame(maxWidth: .infinity, alignment: .trailing)
-        .padding(.top, 10)
-    }
-
-    @ViewBuilder
-    private var updateStatusLine: some View {
-        switch updateChecker.status {
-        case .upToDate:
-            Text("已是最新版本")
-                .font(.caption2)
-                .foregroundStyle(.mint.opacity(0.65))
-
-        case .failed:
-            Text("检查更新失败，请确认网络后重试")
-                .font(.caption2)
-                .foregroundStyle(.orange.opacity(0.85))
-
-        case let .available(info):
-            Button {
-                updateChecker.isPresentingUpdate = true
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .font(.caption2)
-                    Text("有新版本 \(info.display)，点击查看")
-                        .font(.caption2)
-                }
-                .foregroundStyle(.mint)
-            }
-            .buttonStyle(.plain)
-
-        default:
-            EmptyView()
-        }
     }
 }
 
