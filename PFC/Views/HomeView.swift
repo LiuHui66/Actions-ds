@@ -1,6 +1,12 @@
 import SwiftUI
 
-/// 首页：选择难度
+/// 首页导航目的地
+enum HomeRoute: Hashable {
+    case difficulty(Difficulty)
+    case endless
+}
+
+/// 首页：选择模式
 struct HomeView: View {
     @StateObject private var updateChecker = UpdateChecker()
 
@@ -14,11 +20,16 @@ struct HomeView: View {
                         header
 
                         ForEach(Difficulty.allCases) { difficulty in
-                            NavigationLink(value: difficulty) {
+                            NavigationLink(value: HomeRoute.difficulty(difficulty)) {
                                 DifficultyCard(difficulty: difficulty)
                             }
                             .buttonStyle(.plain)
                         }
+
+                        NavigationLink(value: HomeRoute.endless) {
+                            EndlessCard()
+                        }
+                        .buttonStyle(.plain)
 
                         footer
                     }
@@ -28,8 +39,13 @@ struct HomeView: View {
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
-            .navigationDestination(for: Difficulty.self) { difficulty in
-                TrainingView(difficulty: difficulty)
+            .navigationDestination(for: HomeRoute.self) { route in
+                switch route {
+                case let .difficulty(difficulty):
+                    TrainingView(difficulty: difficulty)
+                case .endless:
+                    EndlessTrainingView()
+                }
             }
             // 回到首页时按「6 小时间隔」检查一次是否有新版本
             .task { updateChecker.autoCheck() }
@@ -182,6 +198,68 @@ private struct DifficultyCard: View {
         .overlay(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .strokeBorder(Color.white.opacity(0.09), lineWidth: 1)
+        )
+    }
+}
+
+/// 无限模式卡片（和三个难度卡区分开，用紫色 + 渐变边框）
+private struct EndlessCard: View {
+    @AppStorage(EndlessRecordStorage.defaultsKey) private var best: Int = 0
+
+    var body: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.purple.opacity(0.18))
+                Image(systemName: "infinity")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(Color.purple)
+            }
+            .frame(width: 56, height: 56)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Text("无限模式")
+                        .font(.system(size: 20, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+
+                    Text("NEW")
+                        .font(.system(size: 10, weight: .heavy, design: .rounded))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(Color.purple.opacity(0.24)))
+                        .foregroundStyle(Color.purple)
+                }
+
+                Text(EndlessRules.summary)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                if best > 0 {
+                    Text("最高纪录 \(best) 个")
+                        .font(.caption)
+                        .foregroundStyle(Color.purple.opacity(0.95))
+                } else {
+                    Text("时间归零自动结算，看你能清空几轮")
+                        .font(.caption)
+                        .foregroundStyle(.secondary.opacity(0.8))
+                }
+            }
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.35))
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color.purple.opacity(0.10))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(Color.purple.opacity(0.30), lineWidth: 1)
         )
     }
 }
