@@ -2,11 +2,19 @@ name: Build iOS IPA
 
 # 触发方式：
 # 1) 手动：仓库页面 Actions → Build iOS IPA → Run workflow
-# 2) 自动：push 到 main 分支
+# 2) 自动：push 到 main 分支，且改动落在下面这些路径里
+#    （安卓专属改动不会再白白触发一次 iOS 构建）
 on:
   workflow_dispatch:
   push:
     branches: [main]
+    paths:
+      - 'PFC/**'
+      - 'project.yml'
+      - 'scripts/build-unsigned-ipa.sh'
+      - 'VERSION'
+      - 'CHANGELOG.md'
+      - '.github/workflows/ios-ipa.yml'
 
 # 发布 Release 需要写权限（Release 里挂 IPA，方便手机/电脑下载，比 Artifacts 链接稳定）
 permissions:
@@ -56,7 +64,7 @@ jobs:
           retention-days: 90
 
       # 把 IPA 挂到 Release 上，得到一个固定、免登录的下载地址
-      # （Artifacts 链接需要登录且 90 天后过期；App 内已不再做「检查更新」）
+      # （Artifacts 链接需要登录且 90 天后过期；App 内已不做「检查更新」）
       - name: 发布 Release
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2

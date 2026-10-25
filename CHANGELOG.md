@@ -101,3 +101,11 @@
   - 新增 `.github/workflows/android-apk.yml`：push 后自动编译 debug APK 并发布到 Release
     （安卓 debug 包可直接安装，无 7 天有效期问题）
 - `VERSION` → 1.1.0 / 8；`.gitignore` 增加 Android / Gradle 产物
+- 构建流水线修正（本次推送只有 CI 改动，App 代码与 1.1.0 完全相同，因此版本号仍是 1.1.0 / 8）：
+  - `android-apk.yml` 第 4 步「安装 Android SDK 工具」失败（`android-actions/setup-android@v3`，7 秒即挂）→
+    移除该第三方 action，改为**直接复用 ubuntu-latest 镜像自带的 Android SDK**：
+    自动探测 SDK 目录、自动找 `sdkmanager`、找不到就下载 `cmdline-tools` 兜底、
+    接受许可并显式安装 `platforms;android-34` / `build-tools;34.0.0`，
+    并新增「环境自检」步骤打印 java / gradle / SDK 目录，便于下次快速定位
+  - 两个流水线都加了 `paths` 过滤：iOS 只在 `PFC/**`、`project.yml`、`VERSION` 等变动时触发，
+    安卓只在 `android/**`、`VERSION` 等变动时触发 —— 改一端不会再白白触发另一端的构建
